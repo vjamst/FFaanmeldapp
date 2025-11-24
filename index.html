@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>FC Zondag Aanmelden</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #F3F4F6; -webkit-tap-highlight-color: transparent; }
+        .card-shadow { box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.15); }
+        .progress-fill { transition: width 1s ease-in-out; }
+    </style>
+</head>
+<body class="flex justify-center min-h-screen bg-gray-100 pt-6 px-4 pb-12">
+
+    <div class="w-full max-w-sm bg-white rounded-[32px] card-shadow overflow-hidden relative flex flex-col">
+        
+        <div class="bg-[#15803d] pt-8 pb-8 px-6 text-white text-center relative overflow-hidden">
+            <div class="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
+            
+            <h1 class="font-extrabold text-xl tracking-tight relative z-10">FC Zondag Futsal</h1>
+            <div class="inline-block bg-white/20 backdrop-blur-md rounded-full px-4 py-1 mt-2 border border-white/20">
+                <p class="font-bold text-sm relative z-10">Zondag 11:00 - 13:00</p>
+            </div>
+        </div>
+
+        <div class="px-6 -mt-6 relative z-20">
+            <div class="bg-white rounded-2xl p-5 shadow-lg border border-gray-100 text-center">
+                <div class="flex justify-between items-end mb-2 px-1">
+                    <span class="text-gray-400 font-semibold text-xs uppercase tracking-wider">Aanmeldingen</span>
+                    <span class="text-[#15803d] font-black text-2xl"><span id="count-display">0</span>/14</span>
+                </div>
+                
+                <div class="w-full bg-gray-100 rounded-full h-3 overflow-hidden relative">
+                    <div id="progress-bar" class="bg-[#15803d] h-full rounded-full progress-fill shadow-[0_0_10px_rgba(21,128,61,0.5)]" style="width: 0%"></div>
+                </div>
+                
+                <p id="status-msg" class="text-xs text-gray-400 font-medium mt-3">Laden...</p>
+            </div>
+        </div>
+
+        <div class="px-6 py-6 space-y-4">
+            <input type="text" id="name-input" placeholder="Vul je naam in..." class="w-full p-4 text-center text-gray-800 font-bold bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:bg-white transition placeholder-gray-400">
+            
+            <div class="grid grid-cols-1 gap-3">
+                <button onclick="submit('in')" class="w-full bg-[#15803d] hover:bg-green-800 active:scale-[0.98] transition text-white font-bold py-4 rounded-xl shadow-md flex justify-center items-center gap-2 text-lg">
+                    <span class="bg-white/20 rounded-full p-1"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg></span>
+                    Ik doe mee
+                </button>
+                
+                <button onclick="submit('out')" class="w-full bg-white border-2 border-gray-100 hover:bg-gray-50 text-gray-400 font-bold py-3.5 rounded-xl active:scale-[0.98] transition flex justify-center items-center gap-2 text-sm">
+                    Helaas, ik kan niet
+                </button>
+            </div>
+
+            <div class="text-center pt-2">
+                <button onclick="toggleGuest()" class="text-[#15803d] text-xs font-bold uppercase tracking-wide hover:underline flex items-center justify-center gap-1 mx-auto opacity-80 hover:opacity-100 transition">
+                    + Gastspeler toevoegen
+                </button>
+                <div id="guest-panel" class="hidden mt-3 bg-green-50 p-3 rounded-xl border border-green-100 animate-fade-in">
+                    <input id="guest-name" type="text" placeholder="Naam van gast..." class="w-full p-2 mb-2 rounded border border-green-200 text-sm focus:outline-none focus:border-green-500">
+                    <button onclick="submitGuest()" class="w-full bg-[#15803d] text-white py-2 rounded-lg font-bold text-xs shadow-sm">BEVESTIG GAST</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-gray-50 border-t border-gray-200 flex-grow">
+            <div class="p-6 pb-2">
+                <h3 class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Aanwezig (<span id="count-in">0</span>)</h3>
+                <div id="list-in" class="space-y-2"></div>
+            </div>
+
+            <div class="p-6 pt-0 pb-12">
+                <h3 class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 mt-4">Afwezig (<span id="count-out">0</span>)</h3>
+                <div id="list-out" class="space-y-2 opacity-50 grayscale"></div>
+            </div>
+            
+             <div class="pb-8 text-center">
+                <button onclick="resetList()" class="text-[9px] text-gray-300 hover:text-red-400 font-mono uppercase tracking-widest transition p-4">
+                    [ Admin: Start Nieuwe Week ]
+                </button>
+            </div>
+        </div>
+
+        <div id="loader" class="absolute inset-0 bg-white/95 z-50 flex flex-col justify-center items-center backdrop-blur-sm transition-opacity duration-300">
+            <div class="animate-spin rounded-full h-12 w-12 border-4 border-gray-100 border-t-[#15803d]"></div>
+            <p id="loader-text" class="text-gray-500 font-bold mt-4 text-xs tracking-wide animate-pulse">GEGEVENS OPHALEN...</p>
+        </div>
+
+    </div>
+
+    <script>
+        // *** CONFIGURATIE ***
+        // 👇👇👇 PLAK HIER JE LINK UIT DE SCREENSHOT 👇👇👇
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwKpEIkK07_D-4UL2UHGjdx4WAzW9I_ti9uYO4-5D-OQXbng9_vDDHcRbYv5Gn_-VJu/exec"; 
+        // 👆👆👆
+
+        let players = [];
+
+        // 1. Data laden bij start
+        async function loadData() {
+            try {
+                const res = await fetch(GOOGLE_SCRIPT_URL);
+                const data = await res.json();
+                players = data;
+                render();
+                document.getElementById('loader').classList.add('hidden'); // Verberg lader
+            } catch(e) { 
+                console.error(e);
+                document.getElementById('loader-text').innerText = "FOUT BIJ LADEN";
+                document.getElementById('loader-text').classList.add('text-red-500');
+            }
+        }
+
+        // 2. Data versturen (Aan/Afmelden)
+        async function sendData(name, status, isGuest) {
+            document.getElementById('loader').classList.remove('hidden');
+            document.getElementById('loader-text').innerText = "UPDATEN...";
+            
+            // Optimistische update (meteen tonen in UI)
+            const idx = players.findIndex(p => p.name.toLowerCase() === name.toLowerCase());
+            if(status === 'delete') { if(idx > -1) players.splice(idx, 1); }
+            else if(idx > -1) { players[idx].status = status; } 
+            else { players.push({name, status, isGuest}); }
+            render();
+
+            // Versturen naar Google Sheets
+            await fetch(GOOGLE_SCRIPT_URL, {
+                method: "POST",
+                mode: "no-cors",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({name, status, isGuest})
+            });
+            
+            // Even wachten en checken of server sync is
+            setTimeout(loadData, 1500);
+        }
+
+        // 3. UI Tekenen
+        function render() {
+            const listIn = document.getElementById('list-in');
+            const listOut = document.getElementById('list-out');
+            listIn.innerHTML = ''; listOut.innerHTML = '';
+            
+            let count = 0;
+            let outCount = 0;
+
+            // Sorteren: Gasten onderaan, alfabetisch
+            players.sort((a,b) => a.isGuest - b.isGuest || a.name.localeCompare(b.name));
+
+            players.forEach(p => {
+                const isGuest = p.isGuest;
+                const initials = p.name.substring(0,2).toUpperCase();
+                
+                const html = `
+                    <div class="flex items-center justify-between bg-white p-3 rounded-xl border border-gray-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+                        <div class="flex items-center gap-3">
+                            <div class="h-9 w-9 rounded-full flex items-center justify-center text-[10px] font-black text-white shadow-sm ${p.status === 'in' ? 'bg-gradient-to-br from-green-600 to-green-800' : 'bg-gray-400'}">
+                                ${initials}
+                            </div>
+                            <div>
+                                <p class="font-bold text-gray-800 text-sm leading-tight">${p.name}</p>
+                                ${isGuest ? '<span class="text-[9px] bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">GAST</span>' : ''}
+                            </div>
+                        </div>
+                        <button onclick="remove('${p.name}')" class="text-gray-300 hover:text-red-500 p-2 transition opacity-50 hover:opacity-100">✕</button>
+                    </div>
+                `;
+
+                if(p.status === 'in') { listIn.innerHTML += html; count++; } 
+                else { listOut.innerHTML += html; outCount++; }
+            });
+
+            // Tellers
+            document.getElementById('count-display').innerText = count;
+            document.getElementById('count-in').innerText = count;
+            document.getElementById('count-out').innerText = outCount;
+            
+            // Progress Bar
+            const pct = Math.min((count / 14) * 100, 100);
+            document.getElementById('progress-bar').style.width = pct + '%';
+            
+            // Status Tekst
+            const msg = document.getElementById('status-msg');
+            if(count >= 14) { 
+                msg.innerHTML = "🔥 TEAM COMPLEET! <span class='text-xs font-normal normal-case text-gray-400'>(Wissels mogelijk)</span>"; 
+                msg.className = "text-xs text-green-700 font-black mt-3 uppercase tracking-wide"; 
+            } else { 
+                msg.innerText = `Nog ${14 - count} spelers gezocht`; 
+                msg.className = "text-xs text-gray-400 font-medium mt-3"; 
+            }
+        }
+
+        // 4. Acties
+        function submit(status) {
+            const name = document.getElementById('name-input').value.trim();
+            if(!name) return alert("Vul eerst even je naam in!");
+            sendData(name, status, false);
+            document.getElementById('name-input').value = '';
+        }
+
+        function toggleGuest() { document.getElementById('guest-panel').classList.toggle('hidden'); }
+        
+        function submitGuest() {
+            const name = document.getElementById('guest-name').value.trim();
+            if(!name) return;
+            sendData(name, 'in', true);
+            document.getElementById('guest-name').value = '';
+            toggleGuest();
+        }
+
+        function remove(name) {
+            if(confirm('Weet je zeker dat je ' + name + ' wilt verwijderen?')) sendData(name, 'delete');
+        }
+
+        // 5. NIEUW: ADMIN RESET FUNCTIE
+        async function resetList() {
+            const password = prompt("ADMIN OPTIE:\nWil je de lijst archiveren en leegmaken?\n\nTyp 'start' om te bevestigen:");
+            
+            if (password && password.toLowerCase() === 'start') {
+                document.getElementById('loader').classList.remove('hidden');
+                document.getElementById('loader-text').innerText = "ARCHIVEREN & RESETTEN...";
+                
+                try {
+                    await fetch(GOOGLE_SCRIPT_URL, {
+                        method: "POST",
+                        mode: "no-cors",
+                        headers: {"Content-Type": "application/json"},
+                        body: JSON.stringify({ action: 'reset' })
+                    });
+                    
+                    // Wacht 2 seconden en herlaad pagina
+                    setTimeout(() => {
+                        alert("Lijst is gereset en gearchiveerd!");
+                        location.reload(); 
+                    }, 2000);
+                } catch (e) {
+                    alert("Fout bij resetten.");
+                    location.reload();
+                }
+            }
+        }
+
+        // Start de app
+        loadData();
+    </script>
+</body>
+</html>
