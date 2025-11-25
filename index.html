@@ -9,7 +9,7 @@
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #F3F4F6; -webkit-tap-highlight-color: transparent; }
         .card-shadow { box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.15); }
-        .progress-fill { transition: width 1s ease-in-out; }
+        .progress-fill { transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
     </style>
 </head>
 <body class="flex justify-center min-h-screen bg-gray-100 pt-6 px-4 pb-12">
@@ -92,49 +92,74 @@
 
     <script>
         // *** CONFIGURATIE ***
-        // 👇👇👇 PLAK HIER JE LINK UIT DE SCREENSHOT 👇👇👇
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwKpEIkK07_D-4UL2UHGjdx4WAzW9I_ti9uYO4-5D-OQXbng9_vDDHcRbYv5Gn_-VJu/exec"; 
-        // 👆👆👆
-
+        const CACHE_KEY = 'fc_zondag_v1';
         let players = [];
 
-        // 1. Data laden bij start
+        // 1. Data laden (Cache + Netwerk)
         async function loadData() {
+            // A. Eerst Cache (Supersnel)
+            const cached = localStorage.getItem(CACHE_KEY);
+            if(cached) {
+                players = JSON.parse(cached);
+                render();
+                document.getElementById('loader').classList.add('hidden');
+            }
+
+            // B. Daarna Server Check
             try {
                 const res = await fetch(GOOGLE_SCRIPT_URL);
                 const data = await res.json();
-                players = data;
-                render();
-                document.getElementById('loader').classList.add('hidden'); // Verberg lader
-            } catch(e) { 
-                console.error(e);
-                document.getElementById('loader-text').innerText = "FOUT BIJ LADEN";
-                document.getElementById('loader-text').classList.add('text-red-500');
+                
+                // Alleen updaten als server data anders is
+                if (JSON.stringify(data) !== JSON.stringify(players)) {
+                    players = data;
+                    localStorage.setItem(CACHE_KEY, JSON.stringify(players));
+                    render();
+                }
+            } catch(e) {
+                console.error("Geen verbinding", e);
+                if(!cached) {
+                    document.getElementById('loader-text').innerText = "GEEN VERBINDING";
+                    document.getElementById('loader-text').classList.add('text-red-500');
+                }
+            } finally {
+                if(players.length > 0 || cached) {
+                    document.getElementById('loader').classList.add('hidden');
+                }
             }
         }
 
-        // 2. Data versturen (Aan/Afmelden)
+        // 2. Data versturen (Optimistic UI - Directe feedback)
         async function sendData(name, status, isGuest) {
-            document.getElementById('loader').classList.remove('hidden');
-            document.getElementById('loader-text').innerText = "UPDATEN...";
-            
-            // Optimistische update (meteen tonen in UI)
+            // A. Lokaal updaten (Direct resultaat voor gebruiker)
             const idx = players.findIndex(p => p.name.toLowerCase() === name.toLowerCase());
+            
+            // Backup maken voor als het fout gaat
+            const backup = JSON.parse(JSON.stringify(players));
+
             if(status === 'delete') { if(idx > -1) players.splice(idx, 1); }
             else if(idx > -1) { players[idx].status = status; } 
             else { players.push({name, status, isGuest}); }
+            
+            // Opslaan en tekenen
+            localStorage.setItem(CACHE_KEY, JSON.stringify(players));
             render();
 
-            // Versturen naar Google Sheets
-            await fetch(GOOGLE_SCRIPT_URL, {
-                method: "POST",
-                mode: "no-cors",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({name, status, isGuest})
-            });
-            
-            // Even wachten en checken of server sync is
-            setTimeout(loadData, 1500);
+            // B. Versturen naar Google (Achtergrond)
+            try {
+                await fetch(GOOGLE_SCRIPT_URL, {
+                    method: "POST",
+                    mode: "no-cors",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({name, status, isGuest})
+                });
+            } catch (e) {
+                console.error("Fout bij opslaan", e);
+                alert("Er ging iets mis met opslaan. Check je internetverbinding.");
+                players = backup; // Terugdraaien bij fout
+                render();
+            }
         }
 
         // 3. UI Tekenen
@@ -146,13 +171,10 @@
             let count = 0;
             let outCount = 0;
 
-            // Sorteren: Gasten onderaan, alfabetisch
             players.sort((a,b) => a.isGuest - b.isGuest || a.name.localeCompare(b.name));
 
             players.forEach(p => {
-                const isGuest = p.isGuest;
-                const initials = p.name.substring(0,2).toUpperCase();
-                
+                const initials = p.name ? p.name.substring(0,2).toUpperCase() : "?";
                 const html = `
                     <div class="flex items-center justify-between bg-white p-3 rounded-xl border border-gray-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
                         <div class="flex items-center gap-3">
@@ -161,7 +183,7 @@
                             </div>
                             <div>
                                 <p class="font-bold text-gray-800 text-sm leading-tight">${p.name}</p>
-                                ${isGuest ? '<span class="text-[9px] bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">GAST</span>' : ''}
+                                ${p.isGuest ? '<span class="text-[9px] bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">GAST</span>' : ''}
                             </div>
                         </div>
                         <button onclick="remove('${p.name}')" class="text-gray-300 hover:text-red-500 p-2 transition opacity-50 hover:opacity-100">✕</button>
@@ -172,16 +194,13 @@
                 else { listOut.innerHTML += html; outCount++; }
             });
 
-            // Tellers
             document.getElementById('count-display').innerText = count;
             document.getElementById('count-in').innerText = count;
             document.getElementById('count-out').innerText = outCount;
             
-            // Progress Bar
             const pct = Math.min((count / 14) * 100, 100);
             document.getElementById('progress-bar').style.width = pct + '%';
             
-            // Status Tekst
             const msg = document.getElementById('status-msg');
             if(count >= 14) { 
                 msg.innerHTML = "🔥 TEAM COMPLEET! <span class='text-xs font-normal normal-case text-gray-400'>(Wissels mogelijk)</span>"; 
@@ -194,29 +213,33 @@
 
         // 4. Acties
         function submit(status) {
-            const name = document.getElementById('name-input').value.trim();
+            const nameInput = document.getElementById('name-input');
+            const name = nameInput.value.trim();
             if(!name) return alert("Vul eerst even je naam in!");
+            
+            nameInput.value = ''; // Direct leegmaken (voelt sneller)
+            nameInput.blur();
             sendData(name, status, false);
-            document.getElementById('name-input').value = '';
         }
 
         function toggleGuest() { document.getElementById('guest-panel').classList.toggle('hidden'); }
         
         function submitGuest() {
-            const name = document.getElementById('guest-name').value.trim();
+            const guestInput = document.getElementById('guest-name');
+            const name = guestInput.value.trim();
             if(!name) return;
-            sendData(name, 'in', true);
-            document.getElementById('guest-name').value = '';
+            guestInput.value = '';
             toggleGuest();
+            sendData(name, 'in', true);
         }
 
         function remove(name) {
             if(confirm('Weet je zeker dat je ' + name + ' wilt verwijderen?')) sendData(name, 'delete');
         }
 
-        // 5. NIEUW: ADMIN RESET FUNCTIE
+        // 5. Reset Functie (Cache ook legen!)
         async function resetList() {
-            const password = prompt("ADMIN OPTIE:\nWil je de lijst archiveren en leegmaken?\n\nTyp 'start' om te bevestigen:");
+            const password = prompt("ADMIN OPTIE:\nTyp 'start' om te resetten:");
             
             if (password && password.toLowerCase() === 'start') {
                 document.getElementById('loader').classList.remove('hidden');
@@ -230,9 +253,9 @@
                         body: JSON.stringify({ action: 'reset' })
                     });
                     
-                    // Wacht 2 seconden en herlaad pagina
+                    // Wacht 2 seconden, leeg cache en herlaad
                     setTimeout(() => {
-                        alert("Lijst is gereset en gearchiveerd!");
+                        localStorage.removeItem(CACHE_KEY); // Belangrijk!
                         location.reload(); 
                     }, 2000);
                 } catch (e) {
@@ -242,7 +265,7 @@
             }
         }
 
-        // Start de app
+        // Start
         loadData();
     </script>
 </body>
