@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>FC Zondag Aanmelden</title>
+    <title>FC Zondag</title>
     
     <link rel="icon" type="image/png" href="icon.png">
     <link rel="apple-touch-icon" href="icon.png">
@@ -12,23 +12,42 @@
     <meta name="theme-color" content="#15803d">
 
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #F3F4F6; -webkit-tap-highlight-color: transparent; }
         .card-shadow { box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.15); }
         .progress-fill { transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
     </style>
 </head>
 <body class="flex justify-center min-h-screen bg-gray-100 pt-6 px-4 pb-12">
 
     <div class="w-full max-w-sm bg-white rounded-[32px] card-shadow overflow-hidden relative flex flex-col">
         
-        <div class="bg-[#15803d] pt-8 pb-8 px-6 text-white text-center relative overflow-hidden">
+        <div class="bg-[#15803d] pt-8 pb-8 px-6 text-white text-center relative overflow-hidden min-h-[180px] flex flex-col justify-center">
             <div class="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
             
-            <h1 class="font-extrabold text-xl tracking-tight relative z-10">FC Zondag Futsal</h1>
-            <div class="inline-block bg-white/20 backdrop-blur-md rounded-full px-4 py-1 mt-2 border border-white/20">
-                <p class="font-bold text-sm relative z-10">Zondag 11:00 - 13:00</p>
+            <h1 class="font-black text-2xl tracking-tight relative z-10 mb-4">FC Zondag Futsal</h1>
+            
+            <div class="relative z-10">
+                
+                <div id="header-read-mode" class="hidden bg-white/10 backdrop-blur-md rounded-xl p-3 border border-white/20 group relative">
+                    <p id="header-text-display" class="font-bold text-sm leading-relaxed text-green-50 whitespace-pre-line py-1">
+                        Laden...
+                    </p>
+                    <button onclick="clearHeader()" class="absolute -top-2 -right-2 bg-red-500 text-white p-1.5 rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 hover:scale-110" title="Wissen en nieuw invoeren">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 000-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                    </button>
+                </div>
+
+                <div id="header-edit-mode" class="hidden animate-fade-in">
+                    <textarea id="header-input" rows="2" placeholder="ℹ️ Vul hier datum, tijd & locatie in voor deze week..." class="w-full p-2 text-center text-gray-800 font-bold bg-white/90 border-2 border-green-300/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-white transition placeholder-gray-500 text-sm resize-none"></textarea>
+                    <button onclick="saveHeader()" class="mt-2 bg-white text-[#15803d] text-xs font-black px-4 py-2 rounded-full shadow hover:bg-green-50 transition uppercase tracking-widest">
+                        Opslaan op prikbord
+                    </button>
+                </div>
+
             </div>
         </div>
 
@@ -38,29 +57,24 @@
                     <span class="text-gray-400 font-semibold text-xs uppercase tracking-wider">Aanmeldingen</span>
                     <span class="text-[#15803d] font-black text-2xl"><span id="count-display">0</span>/14</span>
                 </div>
-                
                 <div class="w-full bg-gray-100 rounded-full h-3 overflow-hidden relative">
                     <div id="progress-bar" class="bg-[#15803d] h-full rounded-full progress-fill shadow-[0_0_10px_rgba(21,128,61,0.5)]" style="width: 0%"></div>
                 </div>
-                
                 <p id="status-msg" class="text-xs text-gray-400 font-medium mt-3">Laden...</p>
             </div>
         </div>
 
         <div class="px-6 py-6 space-y-4">
             <input type="text" id="name-input" placeholder="Vul je naam in..." class="w-full p-4 text-center text-gray-800 font-bold bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:bg-white transition placeholder-gray-400">
-            
             <div class="grid grid-cols-1 gap-3">
                 <button onclick="submit('in')" class="w-full bg-[#15803d] hover:bg-green-800 active:scale-[0.98] transition text-white font-bold py-4 rounded-xl shadow-md flex justify-center items-center gap-2 text-lg">
                     <span class="bg-white/20 rounded-full p-1"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg></span>
                     Ik doe mee
                 </button>
-                
                 <button onclick="submit('out')" class="w-full bg-white border-2 border-gray-100 hover:bg-gray-50 text-gray-400 font-bold py-3.5 rounded-xl active:scale-[0.98] transition flex justify-center items-center gap-2 text-sm">
                     Helaas, ik kan niet
                 </button>
             </div>
-
             <div class="text-center pt-2">
                 <button onclick="toggleGuest()" class="text-[#15803d] text-xs font-bold uppercase tracking-wide hover:underline flex items-center justify-center gap-1 mx-auto opacity-80 hover:opacity-100 transition">
                     + Gastspeler toevoegen
@@ -77,12 +91,10 @@
                 <h3 class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Aanwezig (<span id="count-in">0</span>)</h3>
                 <div id="list-in" class="space-y-2"></div>
             </div>
-
             <div class="p-6 pt-0 pb-12">
                 <h3 class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 mt-4">Afwezig (<span id="count-out">0</span>)</h3>
                 <div id="list-out" class="space-y-2 opacity-50 grayscale"></div>
             </div>
-            
              <div class="pb-8 text-center">
                 <button onclick="resetList()" class="text-[9px] text-gray-300 hover:text-red-400 font-mono uppercase tracking-widest transition p-4">
                     [ Admin: Start Nieuwe Week ]
@@ -99,81 +111,126 @@
 
     <script>
         // *** CONFIGURATIE ***
-        // 👇 PLAK HIERONDER JE EIGEN URL 👇
+        // 👇👇👇 PLAK HIER JOUW GOOGLE SCRIPT URL 👇👇👇
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwKpEIkK07_D-4UL2UHGjdx4WAzW9I_ti9uYO4-5D-OQXbng9_vDDHcRbYv5Gn_-VJu/exec"; 
         
-        const CACHE_KEY = 'fc_zondag_v1';
+        const CACHE_KEY = 'fc_zondag_v4_header'; 
         let players = [];
+        let currentHeader = ""; // Hier slaan we de prikbord-tekst op
 
-        // 1. Data laden (Cache + Netwerk)
         async function loadData() {
+            // 1. Cache laden (snelheid)
             const cached = localStorage.getItem(CACHE_KEY);
             if(cached) {
-                players = JSON.parse(cached);
+                const parsed = JSON.parse(cached);
+                players = parsed.players || [];
+                currentHeader = parsed.header || "";
                 render();
                 document.getElementById('loader').classList.add('hidden');
             }
 
+            // 2. Netwerk laden (verversing)
             try {
                 const res = await fetch(GOOGLE_SCRIPT_URL);
                 const data = await res.json();
                 
-                if (JSON.stringify(data) !== JSON.stringify(players)) {
-                    players = data;
-                    localStorage.setItem(CACHE_KEY, JSON.stringify(players));
+                // Check of er iets veranderd is (spelers OF header)
+                if (JSON.stringify(data.players) !== JSON.stringify(players) || data.header !== currentHeader) {
+                    players = data.players || [];
+                    currentHeader = data.header || "";
+                    localStorage.setItem(CACHE_KEY, JSON.stringify({header: currentHeader, players: players}));
                     render();
                 }
             } catch(e) {
                 console.error("Geen verbinding", e);
-                if(!cached) {
-                    document.getElementById('loader-text').innerText = "GEEN VERBINDING";
-                    document.getElementById('loader-text').classList.add('text-red-500');
-                }
+                if(!cached) document.getElementById('loader').classList.add('hidden');
             } finally {
-                if(players.length > 0 || cached) {
-                    document.getElementById('loader').classList.add('hidden');
-                }
+                 if(players.length > 0 || cached) document.getElementById('loader').classList.add('hidden');
             }
         }
 
-        // 2. Data versturen (Optimistic UI)
-        async function sendData(name, status, isGuest) {
-            const idx = players.findIndex(p => p.name.toLowerCase() === name.toLowerCase());
-            const backup = JSON.parse(JSON.stringify(players));
+        // --- NIEUWE FUNCTIES VOOR DE HEADER ---
 
-            if(status === 'delete') { if(idx > -1) players.splice(idx, 1); }
-            else if(idx > -1) { players[idx].status = status; } 
-            else { players.push({name, status, isGuest}); }
-            
-            localStorage.setItem(CACHE_KEY, JSON.stringify(players));
-            render();
+        // 1. Header opslaan (door iedereen te gebruiken)
+        async function saveHeader() {
+            const text = document.getElementById('header-input').value;
+            if(!text.trim()) return alert("Vul wel iets in!");
 
+            // Optimistic update: laat het meteen zien
+            currentHeader = text;
+            render(); 
+
+            // Stuur naar Google Sheets Cel F1
             try {
                 await fetch(GOOGLE_SCRIPT_URL, {
-                    method: "POST",
-                    mode: "no-cors",
+                    method: "POST", mode: "no-cors",
                     headers: {"Content-Type": "application/json"},
-                    body: JSON.stringify({name, status, isGuest})
+                    body: JSON.stringify({ action: 'update_header', text: text })
                 });
-            } catch (e) {
-                console.error("Fout bij opslaan", e);
-                alert("Er ging iets mis met opslaan. Check je internetverbinding.");
-                players = backup; 
-                render();
+                // Update cache
+                localStorage.setItem(CACHE_KEY, JSON.stringify({header: currentHeader, players: players}));
+            } catch(e) {
+                alert("Kon header niet opslaan. Check internet.");
+                location.reload(); // Terugdraaien bij fout
             }
         }
 
-        // 3. UI Tekenen
+        // 2. Header wissen (door iedereen te gebruiken)
+        async function clearHeader() {
+            if(!confirm("Weet je zeker dat je deze info wilt wissen om nieuwe in te voeren?")) return;
+
+            // Optimistic update: maak leeg
+            currentHeader = "";
+            render();
+
+            // Stuur leeg bericht naar Google Sheets Cel F1
+            try {
+                await fetch(GOOGLE_SCRIPT_URL, {
+                    method: "POST", mode: "no-cors",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({ action: 'update_header', text: "" })
+                });
+                 // Update cache
+                localStorage.setItem(CACHE_KEY, JSON.stringify({header: currentHeader, players: players}));
+            } catch(e) {
+                alert("Kon niet wissen. Check internet.");
+                location.reload();
+            }
+        }
+
+
+        // --- BESTAANDE FUNCTIES (Iets aangepast voor renderen) ---
+
         function render() {
+            renderHeader(); // Nieuwe functie aanroepen
+            renderList();   // Oude functie (hernoemd)
+        }
+
+        // Bepaalt welk deel van de header zichtbaar is
+        function renderHeader() {
+            const readMode = document.getElementById('header-read-mode');
+            const editMode = document.getElementById('header-edit-mode');
+            const displayText = document.getElementById('header-text-display');
+
+            if (currentHeader && currentHeader.trim() !== "") {
+                // ER IS TEKST: Toon lees-modus met prullenbak
+                readMode.classList.remove('hidden');
+                editMode.classList.add('hidden');
+                displayText.innerText = currentHeader;
+            } else {
+                // HET IS LEEG: Toon invulveld
+                readMode.classList.add('hidden');
+                editMode.classList.remove('hidden');
+            }
+        }
+
+        function renderList() {
             const listIn = document.getElementById('list-in');
             const listOut = document.getElementById('list-out');
             listIn.innerHTML = ''; listOut.innerHTML = '';
-            
-            let count = 0;
-            let outCount = 0;
+            let count = 0; let outCount = 0;
 
             players.sort((a,b) => a.isGuest - b.isGuest || a.name.localeCompare(b.name));
-
             players.forEach(p => {
                 const initials = p.name ? p.name.substring(0,2).toUpperCase() : "?";
                 const html = `
@@ -182,15 +239,10 @@
                             <div class="h-9 w-9 rounded-full flex items-center justify-center text-[10px] font-black text-white shadow-sm ${p.status === 'in' ? 'bg-gradient-to-br from-green-600 to-green-800' : 'bg-gray-400'}">
                                 ${initials}
                             </div>
-                            <div>
-                                <p class="font-bold text-gray-800 text-sm leading-tight">${p.name}</p>
-                                ${p.isGuest ? '<span class="text-[9px] bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">GAST</span>' : ''}
-                            </div>
+                            <div><p class="font-bold text-gray-800 text-sm leading-tight">${p.name}</p>${p.isGuest ? '<span class="text-[9px] bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">GAST</span>' : ''}</div>
                         </div>
                         <button onclick="remove('${p.name}')" class="text-gray-300 hover:text-red-500 p-2 transition opacity-50 hover:opacity-100">✕</button>
-                    </div>
-                `;
-
+                    </div>`;
                 if(p.status === 'in') { listIn.innerHTML += html; count++; } 
                 else { listOut.innerHTML += html; outCount++; }
             });
@@ -198,21 +250,32 @@
             document.getElementById('count-display').innerText = count;
             document.getElementById('count-in').innerText = count;
             document.getElementById('count-out').innerText = outCount;
-            
             const pct = Math.min((count / 14) * 100, 100);
             document.getElementById('progress-bar').style.width = pct + '%';
             
             const msg = document.getElementById('status-msg');
-            if(count >= 14) { 
-                msg.innerHTML = "🔥 TEAM COMPLEET! <span class='text-xs font-normal normal-case text-gray-400'>(Wissels mogelijk)</span>"; 
-                msg.className = "text-xs text-green-700 font-black mt-3 uppercase tracking-wide"; 
-            } else { 
-                msg.innerText = `Nog ${14 - count} spelers gezocht`; 
-                msg.className = "text-xs text-gray-400 font-medium mt-3"; 
+            if(count >= 14) { msg.innerHTML = "🔥 TEAM COMPLEET! <span class='text-xs font-normal normal-case text-gray-400'>(Wissels mogelijk)</span>"; msg.className = "text-xs text-green-700 font-black mt-3 uppercase tracking-wide"; } else { msg.innerText = `Nog ${14 - count} spelers gezocht`; msg.className = "text-xs text-gray-400 font-medium mt-3"; }
+        }
+
+        // Data versturen (Optimistic UI)
+        async function sendData(name, status, isGuest) {
+            const idx = players.findIndex(p => p.name.toLowerCase() === name.toLowerCase());
+            const backup = JSON.parse(JSON.stringify(players));
+            if(status === 'delete') { if(idx > -1) players.splice(idx, 1); }
+            else if(idx > -1) { players[idx].status = status; } 
+            else { players.push({name, status, isGuest}); }
+            
+            localStorage.setItem(CACHE_KEY, JSON.stringify({header: currentHeader, players: players}));
+            render();
+
+            try {
+                await fetch(GOOGLE_SCRIPT_URL, { method: "POST", mode: "no-cors", headers: {"Content-Type": "application/json"}, body: JSON.stringify({name, status, isGuest}) });
+            } catch (e) {
+                console.error("Fout bij opslaan", e); alert("Er ging iets mis met opslaan. Check je internetverbinding.");
+                players = backup; render();
             }
         }
 
-        // 4. Acties
         function submit(status) {
             const nameInput = document.getElementById('name-input');
             const name = nameInput.value.trim();
@@ -220,9 +283,7 @@
             nameInput.value = ''; nameInput.blur();
             sendData(name, status, false);
         }
-
         function toggleGuest() { document.getElementById('guest-panel').classList.toggle('hidden'); }
-        
         function submitGuest() {
             const guestInput = document.getElementById('guest-name');
             const name = guestInput.value.trim();
@@ -230,34 +291,17 @@
             guestInput.value = ''; toggleGuest();
             sendData(name, 'in', true);
         }
+        function remove(name) { if(confirm('Weet je zeker dat je ' + name + ' wilt verwijderen?')) sendData(name, 'delete'); }
 
-        function remove(name) {
-            if(confirm('Weet je zeker dat je ' + name + ' wilt verwijderen?')) sendData(name, 'delete');
-        }
-
-        // 5. Reset Functie
         async function resetList() {
             const password = prompt("ADMIN OPTIE:\nTyp 'start' om te resetten:");
-            
             if (password && password.toLowerCase() === 'start') {
                 document.getElementById('loader').classList.remove('hidden');
                 document.getElementById('loader-text').innerText = "ARCHIVEREN & RESETTEN...";
-                
                 try {
-                    await fetch(GOOGLE_SCRIPT_URL, {
-                        method: "POST",
-                        mode: "no-cors",
-                        headers: {"Content-Type": "application/json"},
-                        body: JSON.stringify({ action: 'reset' })
-                    });
-                    setTimeout(() => {
-                        localStorage.removeItem(CACHE_KEY); 
-                        location.reload(); 
-                    }, 2000);
-                } catch (e) {
-                    alert("Fout bij resetten.");
-                    location.reload();
-                }
+                    await fetch(GOOGLE_SCRIPT_URL, { method: "POST", mode: "no-cors", headers: {"Content-Type": "application/json"}, body: JSON.stringify({ action: 'reset' }) });
+                    setTimeout(() => { localStorage.removeItem(CACHE_KEY); location.reload(); }, 2000);
+                } catch (e) { alert("Fout bij resetten."); location.reload(); }
             }
         }
 
