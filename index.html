@@ -16,7 +16,6 @@
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #F3F4F6; -webkit-tap-highlight-color: transparent; }
         .card-shadow { box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.15); }
-        .progress-fill { transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
     </style>
@@ -27,40 +26,34 @@
         
         <div class="bg-[#15803d] pt-8 pb-8 px-6 text-white text-center relative overflow-hidden min-h-[180px] flex flex-col justify-center">
             <div class="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
-            
             <h1 class="font-black text-2xl tracking-tight relative z-10 mb-4">FC Zondag Futsal</h1>
-            
             <div class="relative z-10">
-                
                 <div id="header-read-mode" class="hidden bg-white/10 backdrop-blur-md rounded-xl p-3 border border-white/20 group relative">
-                    <p id="header-text-display" class="font-bold text-sm leading-relaxed text-green-50 whitespace-pre-line py-1">
-                        Laden...
-                    </p>
-                    <button onclick="clearHeader()" class="absolute -top-2 -right-2 bg-red-500 text-white p-1.5 rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 hover:scale-110" title="Wissen en nieuw invoeren">
+                    <p id="header-text-display" class="font-bold text-sm leading-relaxed text-green-50 whitespace-pre-line py-1">Laden...</p>
+                    <button onclick="clearHeader()" class="absolute -top-2 -right-2 bg-red-500 text-white p-1.5 rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 hover:scale-110" title="Wissen">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 000-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
                     </button>
                 </div>
-
                 <div id="header-edit-mode" class="hidden animate-fade-in">
                     <textarea id="header-input" rows="2" placeholder="ℹ️ Vul hier datum, tijd & locatie in voor deze week..." class="w-full p-2 text-center text-gray-800 font-bold bg-white/90 border-2 border-green-300/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-white transition placeholder-gray-500 text-sm resize-none"></textarea>
-                    <button onclick="saveHeader()" class="mt-2 bg-white text-[#15803d] text-xs font-black px-4 py-2 rounded-full shadow hover:bg-green-50 transition uppercase tracking-widest">
-                        Opslaan op prikbord
-                    </button>
+                    <button onclick="saveHeader()" class="mt-2 bg-white text-[#15803d] text-xs font-black px-4 py-2 rounded-full shadow hover:bg-green-50 transition uppercase tracking-widest">Opslaan op prikbord</button>
                 </div>
-
             </div>
         </div>
 
         <div class="px-6 -mt-6 relative z-20">
-            <div class="bg-white rounded-2xl p-5 shadow-lg border border-gray-100 text-center">
-                <div class="flex justify-between items-end mb-2 px-1">
-                    <span class="text-gray-400 font-semibold text-xs uppercase tracking-wider">Aanmeldingen</span>
-                    <span class="text-[#15803d] font-black text-2xl"><span id="count-display">0</span>/14</span>
+            <div class="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 text-center">
+                <p class="text-gray-400 font-semibold text-xs uppercase tracking-wider mb-1">
+                    Huidig aantal aanwezig
+                </p>
+                
+                <div class="text-[#15803d] font-black text-6xl tracking-tighter leading-none" id="headcount-display">
+                    0
                 </div>
-                <div class="w-full bg-gray-100 rounded-full h-3 overflow-hidden relative">
-                    <div id="progress-bar" class="bg-[#15803d] h-full rounded-full progress-fill shadow-[0_0_10px_rgba(21,128,61,0.5)]" style="width: 0%"></div>
-                </div>
-                <p id="status-msg" class="text-xs text-gray-400 font-medium mt-3">Laden...</p>
+                
+                <p class="text-xs text-gray-400 font-medium mt-2" id="headcount-status">
+                    Laden...
+                </p>
             </div>
         </div>
 
@@ -114,12 +107,12 @@
         // 👇👇👇 PLAK HIER JOUW GOOGLE SCRIPT URL 👇👇👇
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwKpEIkK07_D-4UL2UHGjdx4WAzW9I_ti9uYO4-5D-OQXbng9_vDDHcRbYv5Gn_-VJu/exec"; 
         
-        const CACHE_KEY = 'fc_zondag_v4_header'; 
+        // Nieuwe cache key voor deze versie
+        const CACHE_KEY = 'fc_zondag_v5_headcount'; 
         let players = [];
-        let currentHeader = ""; // Hier slaan we de prikbord-tekst op
+        let currentHeader = "";
 
         async function loadData() {
-            // 1. Cache laden (snelheid)
             const cached = localStorage.getItem(CACHE_KEY);
             if(cached) {
                 const parsed = JSON.parse(cached);
@@ -129,12 +122,9 @@
                 document.getElementById('loader').classList.add('hidden');
             }
 
-            // 2. Netwerk laden (verversing)
             try {
                 const res = await fetch(GOOGLE_SCRIPT_URL);
                 const data = await res.json();
-                
-                // Check of er iets veranderd is (spelers OF header)
                 if (JSON.stringify(data.players) !== JSON.stringify(players) || data.header !== currentHeader) {
                     players = data.players || [];
                     currentHeader = data.header || "";
@@ -149,78 +139,38 @@
             }
         }
 
-        // --- NIEUWE FUNCTIES VOOR DE HEADER ---
-
-        // 1. Header opslaan (door iedereen te gebruiken)
         async function saveHeader() {
             const text = document.getElementById('header-input').value;
             if(!text.trim()) return alert("Vul wel iets in!");
-
-            // Optimistic update: laat het meteen zien
-            currentHeader = text;
-            render(); 
-
-            // Stuur naar Google Sheets Cel F1
+            currentHeader = text; render(); 
             try {
-                await fetch(GOOGLE_SCRIPT_URL, {
-                    method: "POST", mode: "no-cors",
-                    headers: {"Content-Type": "application/json"},
-                    body: JSON.stringify({ action: 'update_header', text: text })
-                });
-                // Update cache
+                await fetch(GOOGLE_SCRIPT_URL, { method: "POST", mode: "no-cors", headers: {"Content-Type": "application/json"}, body: JSON.stringify({ action: 'update_header', text: text }) });
                 localStorage.setItem(CACHE_KEY, JSON.stringify({header: currentHeader, players: players}));
-            } catch(e) {
-                alert("Kon header niet opslaan. Check internet.");
-                location.reload(); // Terugdraaien bij fout
-            }
+            } catch(e) { alert("Kon header niet opslaan."); location.reload(); }
         }
 
-        // 2. Header wissen (door iedereen te gebruiken)
         async function clearHeader() {
-            if(!confirm("Weet je zeker dat je deze info wilt wissen om nieuwe in te voeren?")) return;
-
-            // Optimistic update: maak leeg
-            currentHeader = "";
-            render();
-
-            // Stuur leeg bericht naar Google Sheets Cel F1
+            if(!confirm("Weet je zeker dat je deze info wilt wissen?")) return;
+            currentHeader = ""; render();
             try {
-                await fetch(GOOGLE_SCRIPT_URL, {
-                    method: "POST", mode: "no-cors",
-                    headers: {"Content-Type": "application/json"},
-                    body: JSON.stringify({ action: 'update_header', text: "" })
-                });
-                 // Update cache
-                localStorage.setItem(CACHE_KEY, JSON.stringify({header: currentHeader, players: players}));
-            } catch(e) {
-                alert("Kon niet wissen. Check internet.");
-                location.reload();
-            }
+                await fetch(GOOGLE_SCRIPT_URL, { method: "POST", mode: "no-cors", headers: {"Content-Type": "application/json"}, body: JSON.stringify({ action: 'update_header', text: "" }) });
+                 localStorage.setItem(CACHE_KEY, JSON.stringify({header: currentHeader, players: players}));
+            } catch(e) { alert("Kon niet wissen."); location.reload(); }
         }
-
-
-        // --- BESTAANDE FUNCTIES (Iets aangepast voor renderen) ---
 
         function render() {
-            renderHeader(); // Nieuwe functie aanroepen
-            renderList();   // Oude functie (hernoemd)
+            renderHeader();
+            renderList();
         }
 
-        // Bepaalt welk deel van de header zichtbaar is
         function renderHeader() {
             const readMode = document.getElementById('header-read-mode');
             const editMode = document.getElementById('header-edit-mode');
             const displayText = document.getElementById('header-text-display');
-
             if (currentHeader && currentHeader.trim() !== "") {
-                // ER IS TEKST: Toon lees-modus met prullenbak
-                readMode.classList.remove('hidden');
-                editMode.classList.add('hidden');
-                displayText.innerText = currentHeader;
+                readMode.classList.remove('hidden'); editMode.classList.add('hidden'); displayText.innerText = currentHeader;
             } else {
-                // HET IS LEEG: Toon invulveld
-                readMode.classList.add('hidden');
-                editMode.classList.remove('hidden');
+                readMode.classList.add('hidden'); editMode.classList.remove('hidden');
             }
         }
 
@@ -236,9 +186,7 @@
                 const html = `
                     <div class="flex items-center justify-between bg-white p-3 rounded-xl border border-gray-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
                         <div class="flex items-center gap-3">
-                            <div class="h-9 w-9 rounded-full flex items-center justify-center text-[10px] font-black text-white shadow-sm ${p.status === 'in' ? 'bg-gradient-to-br from-green-600 to-green-800' : 'bg-gray-400'}">
-                                ${initials}
-                            </div>
+                            <div class="h-9 w-9 rounded-full flex items-center justify-center text-[10px] font-black text-white shadow-sm ${p.status === 'in' ? 'bg-gradient-to-br from-green-600 to-green-800' : 'bg-gray-400'}"> ${initials} </div>
                             <div><p class="font-bold text-gray-800 text-sm leading-tight">${p.name}</p>${p.isGuest ? '<span class="text-[9px] bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">GAST</span>' : ''}</div>
                         </div>
                         <button onclick="remove('${p.name}')" class="text-gray-300 hover:text-red-500 p-2 transition opacity-50 hover:opacity-100">✕</button>
@@ -247,17 +195,20 @@
                 else { listOut.innerHTML += html; outCount++; }
             });
 
-            document.getElementById('count-display').innerText = count;
+            // *** UPDATE DE NIEUWE HEADCOUNT ***
+            document.getElementById('headcount-display').innerText = count;
             document.getElementById('count-in').innerText = count;
             document.getElementById('count-out').innerText = outCount;
-            const pct = Math.min((count / 14) * 100, 100);
-            document.getElementById('progress-bar').style.width = pct + '%';
-            
-            const msg = document.getElementById('status-msg');
-            if(count >= 14) { msg.innerHTML = "🔥 TEAM COMPLEET! <span class='text-xs font-normal normal-case text-gray-400'>(Wissels mogelijk)</span>"; msg.className = "text-xs text-green-700 font-black mt-3 uppercase tracking-wide"; } else { msg.innerText = `Nog ${14 - count} spelers gezocht`; msg.className = "text-xs text-gray-400 font-medium mt-3"; }
+
+            // Simpele status berichtjes op basis van het aantal
+            const statusMsg = document.getElementById('headcount-status');
+            if(count === 0) { statusMsg.innerText = "Nog niemand aangemeld..."; }
+            else if(count < 5) { statusMsg.innerText = "De eersten zijn er!"; }
+            else if(count < 10) { statusMsg.innerText = "Het begint te lopen..."; }
+            else if(count < 14) { statusMsg.innerText = "Gezellig druk!"; }
+            else { statusMsg.innerText = "🔥 Top opkomst!"; }
         }
 
-        // Data versturen (Optimistic UI)
         async function sendData(name, status, isGuest) {
             const idx = players.findIndex(p => p.name.toLowerCase() === name.toLowerCase());
             const backup = JSON.parse(JSON.stringify(players));
@@ -271,7 +222,7 @@
             try {
                 await fetch(GOOGLE_SCRIPT_URL, { method: "POST", mode: "no-cors", headers: {"Content-Type": "application/json"}, body: JSON.stringify({name, status, isGuest}) });
             } catch (e) {
-                console.error("Fout bij opslaan", e); alert("Er ging iets mis met opslaan. Check je internetverbinding.");
+                console.error("Fout bij opslaan", e); alert("Er ging iets mis met opslaan.");
                 players = backup; render();
             }
         }
@@ -291,7 +242,7 @@
             guestInput.value = ''; toggleGuest();
             sendData(name, 'in', true);
         }
-        function remove(name) { if(confirm('Weet je zeker dat je ' + name + ' wilt verwijderen?')) sendData(name, 'delete'); }
+        function remove(name) { if(confirm('Verwijderen?')) sendData(name, 'delete'); }
 
         async function resetList() {
             const password = prompt("ADMIN OPTIE:\nTyp 'start' om te resetten:");
