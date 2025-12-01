@@ -46,14 +46,8 @@
                 <p class="text-gray-400 font-semibold text-xs uppercase tracking-wider mb-1">
                     Huidig aantal aanwezig
                 </p>
-                
-                <div class="text-[#15803d] font-black text-6xl tracking-tighter leading-none" id="headcount-display">
-                    0
-                </div>
-                
-                <p class="text-xs text-gray-400 font-medium mt-2" id="headcount-status">
-                    Laden...
-                </p>
+                <div class="text-[#15803d] font-black text-6xl tracking-tighter leading-none" id="headcount-display">0</div>
+                <p class="text-xs text-gray-400 font-medium mt-2" id="headcount-status">Laden...</p>
             </div>
         </div>
 
@@ -107,8 +101,7 @@
         // 👇👇👇 PLAK HIER JOUW GOOGLE SCRIPT URL 👇👇👇
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwKpEIkK07_D-4UL2UHGjdx4WAzW9I_ti9uYO4-5D-OQXbng9_vDDHcRbYv5Gn_-VJu/exec"; 
         
-        // Nieuwe cache key voor deze versie
-        const CACHE_KEY = 'fc_zondag_v5_headcount'; 
+        const CACHE_KEY = 'fc_zondag_v6_final'; 
         let players = [];
         let currentHeader = "";
 
@@ -158,10 +151,7 @@
             } catch(e) { alert("Kon niet wissen."); location.reload(); }
         }
 
-        function render() {
-            renderHeader();
-            renderList();
-        }
+        function render() { renderHeader(); renderList(); }
 
         function renderHeader() {
             const readMode = document.getElementById('header-read-mode');
@@ -179,7 +169,6 @@
             const listOut = document.getElementById('list-out');
             listIn.innerHTML = ''; listOut.innerHTML = '';
             let count = 0; let outCount = 0;
-
             players.sort((a,b) => a.isGuest - b.isGuest || a.name.localeCompare(b.name));
             players.forEach(p => {
                 const initials = p.name ? p.name.substring(0,2).toUpperCase() : "?";
@@ -194,13 +183,9 @@
                 if(p.status === 'in') { listIn.innerHTML += html; count++; } 
                 else { listOut.innerHTML += html; outCount++; }
             });
-
-            // *** UPDATE DE NIEUWE HEADCOUNT ***
             document.getElementById('headcount-display').innerText = count;
             document.getElementById('count-in').innerText = count;
             document.getElementById('count-out').innerText = outCount;
-
-            // Simpele status berichtjes op basis van het aantal
             const statusMsg = document.getElementById('headcount-status');
             if(count === 0) { statusMsg.innerText = "Nog niemand aangemeld..."; }
             else if(count < 5) { statusMsg.innerText = "De eersten zijn er!"; }
@@ -215,16 +200,10 @@
             if(status === 'delete') { if(idx > -1) players.splice(idx, 1); }
             else if(idx > -1) { players[idx].status = status; } 
             else { players.push({name, status, isGuest}); }
-            
             localStorage.setItem(CACHE_KEY, JSON.stringify({header: currentHeader, players: players}));
             render();
-
-            try {
-                await fetch(GOOGLE_SCRIPT_URL, { method: "POST", mode: "no-cors", headers: {"Content-Type": "application/json"}, body: JSON.stringify({name, status, isGuest}) });
-            } catch (e) {
-                console.error("Fout bij opslaan", e); alert("Er ging iets mis met opslaan.");
-                players = backup; render();
-            }
+            try { await fetch(GOOGLE_SCRIPT_URL, { method: "POST", mode: "no-cors", headers: {"Content-Type": "application/json"}, body: JSON.stringify({name, status, isGuest}) }); } 
+            catch (e) { console.error("Fout bij opslaan", e); alert("Er ging iets mis met opslaan."); players = backup; render(); }
         }
 
         function submit(status) {
@@ -244,15 +223,37 @@
         }
         function remove(name) { if(confirm('Verwijderen?')) sendData(name, 'delete'); }
 
+        // *** DE GECORRIGEERDE RESET FUNCTIE VOOR PWA/iOS ***
         async function resetList() {
             const password = prompt("ADMIN OPTIE:\nTyp 'start' om te resetten:");
             if (password && password.toLowerCase() === 'start') {
+                // 1. Loader tonen
                 document.getElementById('loader').classList.remove('hidden');
-                document.getElementById('loader-text').innerText = "ARCHIVEREN & RESETTEN...";
+                document.getElementById('loader-text').innerText = "BEZIG MET RESETTEN...";
+
                 try {
+                    // 2. Signaal naar Google sturen
                     await fetch(GOOGLE_SCRIPT_URL, { method: "POST", mode: "no-cors", headers: {"Content-Type": "application/json"}, body: JSON.stringify({ action: 'reset' }) });
-                    setTimeout(() => { localStorage.removeItem(CACHE_KEY); location.reload(); }, 2000);
-                } catch (e) { alert("Fout bij resetten."); location.reload(); }
+                    
+                    // 3. Wacht even voor zekerheid
+                    setTimeout(() => {
+                        // 4. Cache legen en lokale variabelen resetten (DIT IS DE FIX)
+                        localStorage.removeItem(CACHE_KEY);
+                        players = [];
+                        currentHeader = "";
+                        
+                        // 5. Scherm direct leegmaken
+                        render();
+                        
+                        // 6. Nieuwe (lege) data ophalen. Dit verbergt de loader als het klaar is.
+                        // GEEN location.reload() MEER GEBRUIKEN HIER!
+                        loadData(); 
+                    }, 2000);
+
+                } catch (e) {
+                    alert("Fout bij resetten.");
+                    document.getElementById('loader').classList.add('hidden');
+                }
             }
         }
 
