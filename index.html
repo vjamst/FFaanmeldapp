@@ -11,6 +11,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#15803d">
 
+    <link rel="preconnect" href="https://script.google.com">
+    <link rel="preconnect" href="https://cdn.tailwindcss.com">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
@@ -96,26 +99,33 @@
 
     <script>
         // *** CONFIGURATIE ***
-        // 👇 PLAK HIER JOUW URL MET /exec 👇
+        // 👇👇👇 PLAK HIER JOUW GOOGLE SCRIPT URL 👇👇👇
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwKpEIkK07_D-4UL2UHGjdx4WAzW9I_ti9uYO4-5D-OQXbng9_vDDHcRbYv5Gn_-VJu/exec"; 
         
-        const CACHE_KEY = 'fc_zondag_v9_clean'; 
+        const CACHE_KEY = 'fc_zondag_v10_optimized'; // Versie omhoog om cache te forceren
         let players = [];
         let currentHeader = "";
 
+        // 1. DATA LADEN (Cache First, Network Second)
         async function loadData() {
             const cached = localStorage.getItem(CACHE_KEY);
+            // Als er cache is, toon die DIRECT
             if(cached) {
-                const parsed = JSON.parse(cached);
-                players = parsed.players || [];
-                currentHeader = parsed.header || "";
-                render();
-                document.getElementById('loader').classList.add('hidden');
+                try {
+                    const parsed = JSON.parse(cached);
+                    players = parsed.players || [];
+                    currentHeader = parsed.header || "";
+                    render();
+                    document.getElementById('loader').classList.add('hidden');
+                } catch(e) { console.log("Cache fout"); }
             }
 
+            // Haal verse data op
             try {
                 const res = await fetch(GOOGLE_SCRIPT_URL);
                 const data = await res.json();
+                
+                // Alleen renderen als er echt iets anders is dan wat we nu zien
                 if (JSON.stringify(data.players) !== JSON.stringify(players) || data.header !== currentHeader) {
                     players = data.players || [];
                     currentHeader = data.header || "";
@@ -124,40 +134,60 @@
                 }
             } catch(e) {
                 console.error("Geen verbinding", e);
-                if(!cached) document.getElementById('loader').classList.add('hidden');
+                // Als we geen cache hebben én geen internet, toon error. Anders gewoon cache laten staan.
+                if(!cached) {
+                    document.getElementById('loader').classList.remove('hidden');
+                    document.getElementById('loader-text').innerText = "GEEN VERBINDING";
+                    document.getElementById('loader-text').classList.add('text-red-500');
+                }
             } finally {
-                 // ALTIJD LOADER VERBERGEN (Dit is de iOS fix)
-                 document.getElementById('loader').classList.add('hidden');
+                 // Verberg loader ALTIJD als we tenminste iets hebben (cache of vers)
+                 if(players.length > 0 || cached || currentHeader) {
+                     document.getElementById('loader').classList.add('hidden');
+                 }
             }
         }
 
+        // 2. HEADER FUNCTIES (Prikbord)
         async function saveHeader() {
             const text = document.getElementById('header-input').value;
             if(!text.trim()) return alert("Vul wel iets in!");
-            currentHeader = text; render(); 
+            
+            // Optimistic update
+            currentHeader = text; 
+            render(); 
+            
             try {
                 await fetch(GOOGLE_SCRIPT_URL, { method: "POST", mode: "no-cors", headers: {"Content-Type": "application/json"}, body: JSON.stringify({ action: 'update_header', text: text }) });
                 localStorage.setItem(CACHE_KEY, JSON.stringify({header: currentHeader, players: players}));
-            } catch(e) { alert("Kon header niet opslaan."); location.reload(); }
+            } catch(e) { 
+                alert("Kon niet opslaan (geen internet?)"); 
+            }
         }
 
         async function clearHeader() {
             if(!confirm("Weet je zeker dat je deze info wilt wissen?")) return;
-            currentHeader = ""; render();
+            currentHeader = ""; 
+            render();
             try {
                 await fetch(GOOGLE_SCRIPT_URL, { method: "POST", mode: "no-cors", headers: {"Content-Type": "application/json"}, body: JSON.stringify({ action: 'update_header', text: "" }) });
                  localStorage.setItem(CACHE_KEY, JSON.stringify({header: currentHeader, players: players}));
-            } catch(e) { alert("Kon niet wissen."); location.reload(); }
+            } catch(e) { 
+                alert("Kon niet wissen (geen internet?)"); 
+            }
         }
 
+        // 3. UI RENDER FUNCTIES
         function render() { renderHeader(); renderList(); }
 
         function renderHeader() {
             const readMode = document.getElementById('header-read-mode');
             const editMode = document.getElementById('header-edit-mode');
             const displayText = document.getElementById('header-text-display');
+            
             if (currentHeader && currentHeader.trim() !== "") {
-                readMode.classList.remove('hidden'); editMode.classList.add('hidden'); displayText.innerText = currentHeader;
+                readMode.classList.remove('hidden'); editMode.classList.add('hidden'); 
+                displayText.innerText = currentHeader;
             } else {
                 readMode.classList.add('hidden'); editMode.classList.remove('hidden');
             }
@@ -167,8 +197,10 @@
             const listIn = document.getElementById('list-in');
             const listOut = document.getElementById('list-out');
             listIn.innerHTML = ''; listOut.innerHTML = '';
+            
             let count = 0; let outCount = 0;
             players.sort((a,b) => a.isGuest - b.isGuest || a.name.localeCompare(b.name));
+            
             players.forEach(p => {
                 const initials = p.name ? p.name.substring(0,2).toUpperCase() : "?";
                 const html = `
@@ -182,9 +214,11 @@
                 if(p.status === 'in') { listIn.innerHTML += html; count++; } 
                 else { listOut.innerHTML += html; outCount++; }
             });
+
             document.getElementById('headcount-display').innerText = count;
             document.getElementById('count-in').innerText = count;
             document.getElementById('count-out').innerText = outCount;
+            
             const statusMsg = document.getElementById('headcount-status');
             if(count === 0) { statusMsg.innerText = "Nog niemand aangemeld..."; }
             else if(count < 5) { statusMsg.innerText = "De eersten zijn er!"; }
@@ -193,16 +227,20 @@
             else { statusMsg.innerText = "🔥 Top opkomst!"; }
         }
 
+        // 4. SPELER ACTIES
         async function sendData(name, status, isGuest) {
             const idx = players.findIndex(p => p.name.toLowerCase() === name.toLowerCase());
-            const backup = JSON.parse(JSON.stringify(players));
+            const backup = JSON.parse(JSON.stringify(players)); // Backup voor als het faalt
+            
             if(status === 'delete') { if(idx > -1) players.splice(idx, 1); }
             else if(idx > -1) { players[idx].status = status; } 
             else { players.push({name, status, isGuest}); }
+            
             localStorage.setItem(CACHE_KEY, JSON.stringify({header: currentHeader, players: players}));
             render();
+
             try { await fetch(GOOGLE_SCRIPT_URL, { method: "POST", mode: "no-cors", headers: {"Content-Type": "application/json"}, body: JSON.stringify({name, status, isGuest}) }); } 
-            catch (e) { console.error("Fout bij opslaan", e); alert("Er ging iets mis met opslaan."); players = backup; render(); }
+            catch (e) { console.error("Fout bij opslaan", e); players = backup; render(); alert("Fout bij opslaan."); }
         }
 
         function submit(status) {
@@ -222,29 +260,33 @@
         }
         function remove(name) { if(confirm('Verwijderen?')) sendData(name, 'delete'); }
 
+        // 5. DE BULLETPROOF RESET FUNCTIE
         async function resetList() {
             const password = prompt("ADMIN OPTIE:\nTyp 'start' om te resetten:");
             if (password && password.toLowerCase() === 'start') {
                 document.getElementById('loader').classList.remove('hidden');
                 document.getElementById('loader-text').innerText = "BEZIG MET RESETTEN...";
+                
                 try {
                     await fetch(GOOGLE_SCRIPT_URL, { method: "POST", mode: "no-cors", headers: {"Content-Type": "application/json"}, body: JSON.stringify({ action: 'reset' }) });
+                } catch (e) {
+                    alert("Let op: reset commando mogelijk mislukt.");
+                } finally {
+                    // DIT BLOK WORDT ALTIJD UITGEVOERD, DUS LOADER GAAT ALTIJD WEG
                     setTimeout(() => {
                         localStorage.removeItem(CACHE_KEY);
                         players = [];
-                        currentHeader = "";
+                        currentHeader = ""; // Header ook leeg bij reset? Zo ja, laat staan.
                         render();
-                        loadData(); 
+                        // Forceer een 'fake' laadactie om zeker te zijn dat alles schoon is
+                        document.getElementById('loader').classList.add('hidden');
                     }, 2000);
-                } catch (e) {
-                    alert("Fout bij resetten.");
-                    document.getElementById('loader').classList.add('hidden');
                 }
             }
         }
 
+        // Start
         loadData();
     </script>
 </body>
 </html>
-
