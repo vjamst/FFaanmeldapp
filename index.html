@@ -101,7 +101,8 @@
         // 👇👇👇 PLAK HIER JOUW GOOGLE SCRIPT URL 👇👇👇
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwKpEIkK07_D-4UL2UHGjdx4WAzW9I_ti9uYO4-5D-OQXbng9_vDDHcRbYv5Gn_-VJu/exec"; 
         
-        const CACHE_KEY = 'fc_zondag_v6_final'; 
+        // Nieuwe cache key
+        const CACHE_KEY = 'fc_zondag_v7_fixed'; 
         let players = [];
         let currentHeader = "";
 
@@ -128,136 +129,6 @@
                 console.error("Geen verbinding", e);
                 if(!cached) document.getElementById('loader').classList.add('hidden');
             } finally {
-                 if(players.length > 0 || cached) document.getElementById('loader').classList.add('hidden');
+                 // DE FIX: ALTIJD de loader verbergen als we klaar zijn, ook als de lijst leeg is.
+                 document.getElementById('loader').classList.add('hidden');
             }
-        }
-
-        async function saveHeader() {
-            const text = document.getElementById('header-input').value;
-            if(!text.trim()) return alert("Vul wel iets in!");
-            currentHeader = text; render(); 
-            try {
-                await fetch(GOOGLE_SCRIPT_URL, { method: "POST", mode: "no-cors", headers: {"Content-Type": "application/json"}, body: JSON.stringify({ action: 'update_header', text: text }) });
-                localStorage.setItem(CACHE_KEY, JSON.stringify({header: currentHeader, players: players}));
-            } catch(e) { alert("Kon header niet opslaan."); location.reload(); }
-        }
-
-        async function clearHeader() {
-            if(!confirm("Weet je zeker dat je deze info wilt wissen?")) return;
-            currentHeader = ""; render();
-            try {
-                await fetch(GOOGLE_SCRIPT_URL, { method: "POST", mode: "no-cors", headers: {"Content-Type": "application/json"}, body: JSON.stringify({ action: 'update_header', text: "" }) });
-                 localStorage.setItem(CACHE_KEY, JSON.stringify({header: currentHeader, players: players}));
-            } catch(e) { alert("Kon niet wissen."); location.reload(); }
-        }
-
-        function render() { renderHeader(); renderList(); }
-
-        function renderHeader() {
-            const readMode = document.getElementById('header-read-mode');
-            const editMode = document.getElementById('header-edit-mode');
-            const displayText = document.getElementById('header-text-display');
-            if (currentHeader && currentHeader.trim() !== "") {
-                readMode.classList.remove('hidden'); editMode.classList.add('hidden'); displayText.innerText = currentHeader;
-            } else {
-                readMode.classList.add('hidden'); editMode.classList.remove('hidden');
-            }
-        }
-
-        function renderList() {
-            const listIn = document.getElementById('list-in');
-            const listOut = document.getElementById('list-out');
-            listIn.innerHTML = ''; listOut.innerHTML = '';
-            let count = 0; let outCount = 0;
-            players.sort((a,b) => a.isGuest - b.isGuest || a.name.localeCompare(b.name));
-            players.forEach(p => {
-                const initials = p.name ? p.name.substring(0,2).toUpperCase() : "?";
-                const html = `
-                    <div class="flex items-center justify-between bg-white p-3 rounded-xl border border-gray-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
-                        <div class="flex items-center gap-3">
-                            <div class="h-9 w-9 rounded-full flex items-center justify-center text-[10px] font-black text-white shadow-sm ${p.status === 'in' ? 'bg-gradient-to-br from-green-600 to-green-800' : 'bg-gray-400'}"> ${initials} </div>
-                            <div><p class="font-bold text-gray-800 text-sm leading-tight">${p.name}</p>${p.isGuest ? '<span class="text-[9px] bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">GAST</span>' : ''}</div>
-                        </div>
-                        <button onclick="remove('${p.name}')" class="text-gray-300 hover:text-red-500 p-2 transition opacity-50 hover:opacity-100">✕</button>
-                    </div>`;
-                if(p.status === 'in') { listIn.innerHTML += html; count++; } 
-                else { listOut.innerHTML += html; outCount++; }
-            });
-            document.getElementById('headcount-display').innerText = count;
-            document.getElementById('count-in').innerText = count;
-            document.getElementById('count-out').innerText = outCount;
-            const statusMsg = document.getElementById('headcount-status');
-            if(count === 0) { statusMsg.innerText = "Nog niemand aangemeld..."; }
-            else if(count < 5) { statusMsg.innerText = "De eersten zijn er!"; }
-            else if(count < 10) { statusMsg.innerText = "Het begint te lopen..."; }
-            else if(count < 14) { statusMsg.innerText = "Gezellig druk!"; }
-            else { statusMsg.innerText = "🔥 Top opkomst!"; }
-        }
-
-        async function sendData(name, status, isGuest) {
-            const idx = players.findIndex(p => p.name.toLowerCase() === name.toLowerCase());
-            const backup = JSON.parse(JSON.stringify(players));
-            if(status === 'delete') { if(idx > -1) players.splice(idx, 1); }
-            else if(idx > -1) { players[idx].status = status; } 
-            else { players.push({name, status, isGuest}); }
-            localStorage.setItem(CACHE_KEY, JSON.stringify({header: currentHeader, players: players}));
-            render();
-            try { await fetch(GOOGLE_SCRIPT_URL, { method: "POST", mode: "no-cors", headers: {"Content-Type": "application/json"}, body: JSON.stringify({name, status, isGuest}) }); } 
-            catch (e) { console.error("Fout bij opslaan", e); alert("Er ging iets mis met opslaan."); players = backup; render(); }
-        }
-
-        function submit(status) {
-            const nameInput = document.getElementById('name-input');
-            const name = nameInput.value.trim();
-            if(!name) return alert("Vul eerst even je naam in!");
-            nameInput.value = ''; nameInput.blur();
-            sendData(name, status, false);
-        }
-        function toggleGuest() { document.getElementById('guest-panel').classList.toggle('hidden'); }
-        function submitGuest() {
-            const guestInput = document.getElementById('guest-name');
-            const name = guestInput.value.trim();
-            if(!name) return;
-            guestInput.value = ''; toggleGuest();
-            sendData(name, 'in', true);
-        }
-        function remove(name) { if(confirm('Verwijderen?')) sendData(name, 'delete'); }
-
-        // *** DE GECORRIGEERDE RESET FUNCTIE VOOR PWA/iOS ***
-        async function resetList() {
-            const password = prompt("ADMIN OPTIE:\nTyp 'start' om te resetten:");
-            if (password && password.toLowerCase() === 'start') {
-                // 1. Loader tonen
-                document.getElementById('loader').classList.remove('hidden');
-                document.getElementById('loader-text').innerText = "BEZIG MET RESETTEN...";
-
-                try {
-                    // 2. Signaal naar Google sturen
-                    await fetch(GOOGLE_SCRIPT_URL, { method: "POST", mode: "no-cors", headers: {"Content-Type": "application/json"}, body: JSON.stringify({ action: 'reset' }) });
-                    
-                    // 3. Wacht even voor zekerheid
-                    setTimeout(() => {
-                        // 4. Cache legen en lokale variabelen resetten (DIT IS DE FIX)
-                        localStorage.removeItem(CACHE_KEY);
-                        players = [];
-                        currentHeader = "";
-                        
-                        // 5. Scherm direct leegmaken
-                        render();
-                        
-                        // 6. Nieuwe (lege) data ophalen. Dit verbergt de loader als het klaar is.
-                        // GEEN location.reload() MEER GEBRUIKEN HIER!
-                        loadData(); 
-                    }, 2000);
-
-                } catch (e) {
-                    alert("Fout bij resetten.");
-                    document.getElementById('loader').classList.add('hidden');
-                }
-            }
-        }
-
-        loadData();
-    </script>
-</body>
-</html>
